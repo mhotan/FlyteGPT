@@ -1,21 +1,55 @@
-from langchain.document_loaders import ReadTheDocsLoader
-from langchain.schema import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores.faiss import FAISS
+import os
 import pickle
-from langchain.document_loaders import GitLoader, SlackDirectoryLoader
-from langchain.text_splitter import CharacterTextSplitter, PythonCodeTextSplitter
 import re
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores.faiss import FAISS
+import tempfile
 from typing import Any
 
-def get_documents_from_slack_data(path):
-    loader = SlackDirectoryLoader(zip_path=path)
+import boto3
+from langchain.document_loaders import (ConfluenceLoader, GitLoader,
+                                        ReadTheDocsLoader,
+                                        SlackDirectoryLoader)
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.schema import Document
+from langchain.text_splitter import (CharacterTextSplitter,
+                                     PythonCodeTextSplitter,
+                                     RecursiveCharacterTextSplitter)
+from langchain.vectorstores.faiss import FAISS
+
+# Create a Boto3 S3 client
+s3 = boto3.client('s3')
+
+# s3://union-union-compute-us-east-2-load-test-aws/hackathon_artifacts/
+# Specify the bucket and object key
+bucket_name = 'union-union-compute-us-east-2-load-test-aws'
+object_key = 'hackathon_artifacts/2022-11-17_to_2023-11-17_union.zip'
+
+def get_documents_from_slack_data(object_key=object_key):
+    # Create a temporary file
+    temp_file = tempfile.NamedTemporaryFile(delete=False)
+    # Download the file from S3 to the temporary file
+    s3.download_file(bucket_name, object_key, temp_file.name)
+
+    loader = SlackDirectoryLoader(zip_path=temp_file.name)
     raw_documents = loader.load()
     text_splitter = CharacterTextSplitter()
     documents = text_splitter.split_documents(raw_documents)
-    print(f"Loaded {len(documents)} documents from {path}")
+    print(
+        f"Loaded {len(documents)} documents from s3://{bucket_name}/{object_key}")
+    return documents
+
+def get_documents_from_confluence_data():
+    url = "https://unionai.atlassian.net/wiki"
+    confluence_loader = ConfluenceLoader(
+        url,
+        username="mike@union.ai",
+        api_key="TODO"
+    )
+    space_key = "ENG"
+    raw_documents = confluence_loader.load(space_key=space_key)
+    text_splitter = CharacterTextSplitter()
+    documents = text_splitter.split_documents(raw_documents)
+    print(
+        f"Loaded {len(documents)} documents from Confluence URL: {url} Space: {space_key}")
     return documents
 
 
@@ -144,15 +178,12 @@ def get_documents_from_proto_data(path):
     documents = text_splitter.split_documents(raw_documents)
     print(f"Loaded {len(documents)} documents from {path}")
     return documents
-    
+
 
 def load_and_split_documents():
-    slack_documents = get_documents_from_slack_data("./data/flyte-slack-data.zip")
-    python_documents = get_documents_from_python_data("./data/flytekit")
-    golang_documents = get_documents_from_golang_data("./data/flyteplugins") + get_documents_from_golang_data("./data/flytepropeller") + get_documents_from_golang_data("./data/flyteadmin")
-    rst_documents = get_documents_from_rst_data("./data/flyte")
-    proto_documents = get_documents_from_golang_data("./data/flyteidl")
-    return slack_documents + python_documents + golang_documents + rst_documents + proto_documents
+    slack_documents = get_documents_from_slack_data()
+    confluence_documents = get_documents_from_confluence_data()
+    return slack_documents + confluence_documents
 
 def embed_and_vectorize_documents(documents):
     embeddings = HuggingFaceEmbeddings()

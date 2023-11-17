@@ -1,0 +1,84 @@
+FROM jupyter/scipy-notebook:python-3.11
+
+ENV TZ=America/Los_Angeles
+
+# # Install extensions for JupyterLab with conda and pip
+# # Multi conda kernels: #   https://stackoverflow.com/questions/53004311/how-to-add-conda-environment-to-jupyter-lab
+# RUN mamba install --quiet -y \
+#     ipython-sql \
+#     jupyterlab-git \
+#     jupyterlab-lsp \
+#     jupyter-lsp-python \
+#     rise \
+#     'jupyter-server-proxy>=3.1.0'
+
+# RUN pip uninstall -y ipython prompt_toolkit && \
+#     pip install --upgrade pip && \
+#     pip install --upgrade \
+#     jupyterlab-spreadsheet-editor \
+#     hatch \
+#     jupyterlab-github \
+#     jupyterlab-system-monitor \
+#     ipython \
+#     prompt_toolkit
+
+# # Change to root user to install things
+# USER root
+
+# RUN apt-get update && \
+#     apt-get install -y tzdata curl wget unzip zsh vim htop gfortran \
+#     python3-dev libpq-dev libclang-dev
+
+# # Install VS Code server and extensions
+# RUN curl -fsSL https://code-server.dev/install.sh | sh
+# RUN code-server --install-extension redhat.vscode-yaml \
+#     --install-extension ms-python.python \
+#     --install-extension bungcip.better-toml \
+#     --install-extension vscjava.vscode-java-pack \
+#     --install-extension ginfuru.ginfuru-better-solarized-dark-theme \
+#     --install-extension oderwat.indent-rainbow \
+#     --install-extension mutantdino.resourcemonitor \
+#     --install-extension mechatroner.rainbow-csv \
+#     --install-extension GrapeCity.gc-excelviewer \
+#     --install-extension tht13.html-preview-vscode \
+#     --install-extension mdickin.markdown-shortcuts \
+#     --install-extension redhat.vscode-xml \
+#     --install-extension nickdemayo.vscode-json-editor \
+#     --install-extension ms-mssql.mssql \
+#     # --install-extension ms-azuretools.vscode-docker \
+#     --install-extension eamodio.gitlens
+
+# RUN cd /opt && \
+#     export EXT_VERSION=0.1.2 && \
+#     wget https://open-vsx.org/api/vemonet/stardog-rdf-grammars/$EXT_VERSION/file/vemonet.stardog-rdf-grammars-$EXT_VERSION.vsix && \
+#     code-server --install-extension vemonet.stardog-rdf-grammars-$EXT_VERSION.vsix
+
+# RUN fix-permissions $CONDA_DIR && \
+#     fix-permissions /home/$NB_USER && \
+#     fix-permissions /home/$NB_USER/.local && \
+#     fix-permissions /opt && \
+#     fix-permissions /etc/jupyter
+
+# Change back to notebook user
+
+USER ${NB_UID}
+
+RUN mkdir -p /home/$NB_USER/work
+
+# Install Oh My ZSH! and custom theme
+RUN sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+RUN curl -fsSL -o ~/.oh-my-zsh/custom/themes/biratime.zsh-theme https://raw.github.com/vemonet/biratime/main/biratime.zsh-theme
+RUN sed -i 's/^ZSH_THEME=".*"$/ZSH_THEME="biratime"/g' ~/.zshrc
+RUN echo "\`conda config --set changeps1 false\`" >> ~/.oh-my-zsh/plugins/virtualenv/virtualenv.plugin.zsh
+RUN echo 'setopt NO_HUP' >> ~/.zshrc
+ENV SHELL=/bin/zsh
+
+USER root
+RUN chsh -s /bin/zsh
+COPY icons/*.svg /etc/jupyter/
+COPY jupyter_notebook_config.py /etc/jupyter/jupyter_notebook_config.py
+USER ${NB_UID}
+
+COPY . $WORKSPACE
+
+CMD [ "start-notebook.sh", "--no-browser", "--ip=0.0.0.0", "--config=/etc/jupyter/jupyter_notebook_config.py" ]

@@ -1,0 +1,41 @@
+steps:
+- label: ':docker: Build Workflow Base image'
+  key: build-workflow-base
+  retry:
+    automatic:
+    - exit_status: -1
+      limit: 1
+    - exit_status: 2
+      limit: 1
+  command:
+  - aws ecr get-login-password --region us-east-2 | docker login --username AWS
+    --password-stdin 655542821732.dkr.ecr.us-east-2.amazonaws.com
+  - 'DOCKER_BUILDKIT=1 buildctl build --frontend=dockerfile.v0 --local context=./
+    --local dockerfile=. --output type=image,name=655542821732.dkr.ecr.us-east-2.amazonaws.com/hackathon-workflow-base:$(git
+    rev-parse HEAD),push=True'
+  agents:
+    queue: default
+  env:
+    DOCKER_BUILDKIT: 1
+    BUILDKIT_HOST: tcp://earthly.buildkit.svc.cluster.local:8372
+    PUSH: true
+- label: ':docker: Build Jupyter Notebook image'
+  key: build-dev
+  retry:
+    automatic:
+    - exit_status: -1
+      limit: 1
+    - exit_status: 2
+      limit: 1
+  command:
+  - aws ecr get-login-password --region us-east-2 | docker login --username AWS
+    --password-stdin 655542821732.dkr.ecr.us-east-2.amazonaws.com
+  - 'DOCKER_BUILDKIT=1 buildctl build --frontend=dockerfile.v0 --local context=./
+    --local dockerfile=. --opt filename=./Dockerfile.dev
+    --output type=image,name=655542821732.dkr.ecr.us-east-2.amazonaws.com/hackathon-dev:$(git rev-parse HEAD),push=True'
+  agents:
+    queue: default
+  env:
+    DOCKER_BUILDKIT: 1
+    BUILDKIT_HOST: tcp://earthly.buildkit.svc.cluster.local:8372
+    PUSH: true

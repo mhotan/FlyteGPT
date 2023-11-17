@@ -1,16 +1,14 @@
 # 🦅🔗 Building FlyteGPT on Flyte with LangChain
 
-Flyte is the best example of [deep modules](https://www.mattduck.com/2021-04-a-philosophy-of-software-design.html). The user interface is amazingly simple, but the implementation is deeply complicated. As a active contributor of Flyte, I usually help answering questions in our slack channel. The answer of common questions can mostly be found in the slack history, but for the new questions, I usually have to deep dive into the source code to figure out. 
+Flyte is the best example of [deep modules](https://www.mattduck.com/2021-04-a-philosophy-of-software-design.html). The user interface is amazingly simple, but the implementation is deeply complicated. As a active contributor of Flyte, I usually help answering questions in our slack channel. The answer of common questions can mostly be found in the slack history, but for the new questions, I usually have to deep dive into the source code to figure out.
 
 As time has gone by, I feel like I'm becoming a Flyte GPT myself, constantly looking up information and providing answers. I've come up with a wild idea: why not build a Flyte GPT on Flyte itself?
-
 
 ## Demo
 
 Before we start, let's look at some impressing Q&A result.
 
-
-> Human: Compare flyte and airflow. For machine learning use cases, which one is better? 
+> Human: Compare flyte and airflow. For machine learning use cases, which one is better?
 
 AI:
 Flyte and Airflow are both workflow automation platforms for machine learning and data processes at scale. However, there are some differences between the two. Airflow is older and more monolithic, with great integrations, while Flyte is more scalable, k8s native, and API first. Flyte also has features like data flow, multiple languages, versioning, backend plugins, a type system, and multi-schedules, which Airflow lacks. Ultimately, the choice between Flyte and Airflow depends on your specific use case and requirements. It's worth noting that Flyte works well for batch inference and event-driven architectures with latency requirements of 1-10 minutes, but for anything faster, inference tools like BentoML may be more suitable.
@@ -20,14 +18,14 @@ Flyte and Airflow are both workflow automation platforms for machine learning an
 AI:
 Fast registration in Flyte allows users to update workflow code without having to rebuild the entire docker image. This is achieved by zipping up the code, uploading it to the configured blob store using a signed URL, and then prepending a command to the task's normal command. At runtime, the command downloads the archive from the blob store and unzips it to the root of the container's image. The `pyflyte package` command with the `--fast` flag can be used to enable fast registration. It is important to note that registration is a two-step process involving compilation and registration, and separate commands are available for each step. More information can be found in the Flyte documentation.
 
-I am extremely amazed by how deep FlyteGPT understands Flyte. The answers are not only accurate, but also offer abundant context for users to easily understand. 
-
+I am extremely amazed by how deep FlyteGPT understands Flyte. The answers are not only accurate, but also offer abundant context for users to easily understand.
 
 ## How FlyteGPT works
 
 I collected the data from github and public slack channel, and used LangChain to build a Q&A chat bot. LangChain provides a great abstraction and makes building FlyteGPT easy. There are mainly two steps: Ingestion and Query.
 
 ### 1. Ingest documents into a queriable format
+
 - Load documents (document loader): The bot loads documents using a document loader, which can handle various data types.
 - Split documents (text splitter): The loaded documents are split into smaller text chunks to facilitate indexing and querying.
 
@@ -83,9 +81,23 @@ def start_conversation(vectorstore):
         print("AI:")
         print(result["answer"])
 ```
-## Running on Flyte
 
-Flyte provides an simple pythonic interface to run tasks on kubernetes cluster. I can easily configure the resource, image, and cachablity in pure python.
+## Running on Union
+
+Union (incl Flyte) provides an simple pythonic interface to run tasks on kubernetes cluster. I can easily configure the resource, image, and cachablity in pure python.
+
+### Setup
+
+Follow [Union.ai official instructions](https://docs.union.ai/getting-started/setting-up-the-project-on-union-cloud#initialize-configuration).
+
+Ensure `FLYTECTL_COINFIG` points to a config.yaml to your target cluster.
+
+```
+uctl create project \
+      --id "hackathon" \
+      --description "Home of Hackathon workflows" \
+      --name "Hackathon Nov 2023"
+```
 
 ### Development
 
@@ -94,7 +106,6 @@ Check out [dev-workflow.py](./dev-workflow.py)
 In the development stage, I wanted to utilize the GPU nodes in the cluster. To achieve this, I launched a pod that was built with both VSCode and Jupyter Notebook. I then connected to the pod using a browser-based interface.
 
 1. Build a docker image equipped with developer tools (code-server, jupyterlab, vim, etc). Refer to [MaastrichtU-IDS/jupyterlab](https://github.com/MaastrichtU-IDS/jupyterlab/blob/8bc639a46ec2213cb909025d98bae4103019d1cd/Dockerfile#L1)
-
 2. Run a sleeping task with gpu resources (gpu makes embedding much faster)
 
 ```python

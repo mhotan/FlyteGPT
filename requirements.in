@@ -1,0 +1,12 @@
+flytekit
+torch
+torchvision
+torchaudio
+boto3
+langchain
+atlassian-python-api
+beautifulsoup4
+lxml
+sentence-transformers
+faiss-cpu
+openai

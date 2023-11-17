@@ -1,0 +1,9 @@
+files/
+.gitignore
+.python-version
+docker_build.sh
+Dockerfile*
+readme.md
+.ipynp_checkpoints/
+.virtual_documents/
+.vscode/
