@@ -77,26 +77,26 @@ def get_documents_from_slack_data(object_key=object_key):
         f"Loaded {len(documents)} documents from s3://{bucket_name}/{object_key}")
     return documents
 
-def get_documents_from_confluence_data(confluence_api_key: str):
+def get_documents_from_confluence_data(confluence_api_key: str, confluence_space_key: str):
     url = "https://unionai.atlassian.net/wiki"
     confluence_loader = ConfluenceLoader(
         url,
         username="mike@union.ai",
         api_key=confluence_api_key
     )
-    space_key = "ENG"
-    raw_documents = confluence_loader.load(space_key=space_key)
+    raw_documents = confluence_loader.load(space_key=confluence_space_key)
     text_splitter = CharacterTextSplitter()
     documents = text_splitter.split_documents(raw_documents)
     print(
-        f"Loaded {len(documents)} documents from Confluence URL: {url} Space: {space_key}")
+        f"Loaded {len(documents)} documents from Confluence URL: {url} Space: {confluence_space_key}")
     return documents
 
 
-def load_and_split_documents(confluence_api_key: str):
+def load_and_split_documents(confluence_api_key: str, confluence_space_key: str):
     slack_documents = get_documents_from_slack_data()
     confluence_documents = get_documents_from_confluence_data(
-        confluence_api_key=confluence_api_key)
+        confluence_api_key=confluence_api_key,
+        confluence_space_key=confluence_space_key)
     return slack_documents + confluence_documents
 
 
@@ -111,8 +111,11 @@ def embed_and_vectorize_documents(documents):
     cache=True,
     cache_version="0.0.0"
 )
-def ingest(confluence_api_key: str) -> FlyteFile:
-    documents = load_and_split_documents(confluence_api_key=confluence_api_key)
+def ingest(confluence_api_key: str, confluence_space_key: str) -> FlyteFile:
+    documents = load_and_split_documents(
+        confluence_api_key=confluence_api_key,
+        confluence_space_key=confluence_space_key
+        )
     vectorstore = embed_and_vectorize_documents(documents)
     torch.save(vectorstore, "./vectorstore.pt")
 
@@ -135,12 +138,27 @@ def query(openai_api_key: str, vectorstore_file: FlyteFile, questions: List[str]
         print(result["answer"] + "\n")
 
 @workflow
-def workflow(confluence_api_key: str,
+def oncall(confluence_api_key: str,
              openai_api_key: str):
-    vectorstore_file = ingest(confluence_api_key=confluence_api_key)
+    vectorstore_file = ingest(confluence_api_key=confluence_api_key,
+                              confluence_space_key="ENG")
     query(openai_api_key=openai_api_key,
           vectorstore_file=vectorstore_file,
           questions=[
               "What are On-Call responsibilities?",
               "How do I escalate an incident?",
-              "How many alerts fired in October?"])
+              "How do I know if Prometheus is running out of Memory?",
+              "What do I do if it is running out of Memory?"])
+
+
+@workflow
+def company(confluence_api_key: str, openai_api_key: str):
+    vectorstore_file = ingest(confluence_api_key=confluence_api_key,
+                              confluence_space_key="CH")
+    query(openai_api_key=openai_api_key,
+          vectorstore_file=vectorstore_file,
+          questions=[
+              "What is Union's Mission?",
+              "How PTO days are available a year?",
+              "If I live in Uganda, can I get direct reimbursements?",
+              ])

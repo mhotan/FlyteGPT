@@ -1,4 +1,4 @@
-# 🦅🔗 Building FlyteGPT on Flyte with LangChain
+# 🦅🔗 Building Union On-Call GPT on Flyte with LangChain
 
 Flyte is the best example of [deep modules](https://www.mattduck.com/2021-04-a-philosophy-of-software-design.html). The user interface is amazingly simple, but the implementation is deeply complicated. As a active contributor of Flyte, I usually help answering questions in our slack channel. The answer of common questions can mostly be found in the slack history, but for the new questions, I usually have to deep dive into the source code to figure out.
 
